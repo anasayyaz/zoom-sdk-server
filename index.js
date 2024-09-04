@@ -8,9 +8,7 @@ const app = express();
 app.use(express.json());
 
 // Use the cors middleware
-app.use(cors({
-  origin: 'http://localhost:4200' // Replace with your Angular app's URL
-}));
+app.use(cors());
 
 let accessToken = '';
 
@@ -53,15 +51,16 @@ app.post('/create-meeting', async (req, res) => {
 
   try {
     const response = await axios.post('https://api.zoom.us/v2/users/' + hostEmail + '/meetings', {
-      topic: topic,
+      topic: topic || "Default Meeting Topic",
       type: 2, // Scheduled Meeting
       start_time: startTime, // ISO-8601 format (e.g., 2024-09-02T10:00:00Z)
-      duration: duration,
+      duration: duration || 60, // Set default duration if not provided
       timezone: 'UTC',
+      password: '123456', // Set the password as "123456"
       settings: {
         host_video: true,
         participant_video: true,
-        waiting_room: false,
+        waiting_room: false, // Disable waiting room
       },
     }, {
       headers: {
@@ -70,17 +69,21 @@ app.post('/create-meeting', async (req, res) => {
       }
     });
 
-    const meetingId = response.data.id;
-    const meetingPassword = response.data.password;
+    const meetingId = response.data.id; // This will be the Zoom-generated meeting ID
+    const meetingPassword = response.data.password; // This will be the password you set
 
     // Generate the Zoom Web Client URL
     const meetingLink = `https://zoom.us/wc/join/${meetingId}?pwd=${meetingPassword}`;
 
     // Respond with the meeting ID, password, and link
-    res.json({ meetingId, meetingPassword, meetingLink });
+    res.json({
+      meetingId: meetingId, // Zoom-generated meeting ID
+      meetingPassword: meetingPassword, // Password set to "123456"
+      meetingLink: meetingLink // Zoom Web Client link
+    });
   } catch (error) {
     console.log(error);
-    
+
     if (error.response && error.response.status === 401) {
       // If token has expired, get a new one and retry the request
       await getOAuthToken();
