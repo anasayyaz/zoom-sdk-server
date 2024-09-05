@@ -1,13 +1,12 @@
 const express = require('express');
-const cors = require('cors'); // Import the cors package
+const cors = require('cors');
 const axios = require('axios');
 const querystring = require('querystring');
+const jwt = require('jsonwebtoken'); // Import jsonwebtoken for JWT
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
-
-// Use the cors middleware
 app.use(cors());
 
 let accessToken = '';
@@ -40,9 +39,8 @@ app.get('/', (req, res) => {
   res.send('Zoom API Integration is running!');
 });
 
-// Generate a Zoom Meeting Link and return Zoom Web Client URL
+// Generate a Zoom Meeting Link and return JWT token with meeting details
 app.post('/create-meeting', async (req, res) => {
-  // Destructure the data from the request body
   const { hostEmail, topic, duration, startTime } = req.body;
 
   if (!accessToken) {
@@ -69,23 +67,29 @@ app.post('/create-meeting', async (req, res) => {
       }
     });
 
-    const meetingId = response.data.id; // This will be the Zoom-generated meeting ID
-    const meetingPassword = response.data.password; // This will be the password you set
+    const meetingId = response.data.id;
+    const meetingPassword = response.data.password;
 
-    // Generate the Zoom Web Client URL
-    const meetingLink = `https://zoom.us/wc/join/${meetingId}?pwd=${meetingPassword}`;
+    // Payload to include in the JWT
+    const payload = {
+      meetingId: meetingId,
+      meetingPassword: meetingPassword
+    };
 
-    // Respond with the meeting ID, password, and link
+    // Generate JWT token
+    const jwtToken = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret_key', { expiresIn: '1h' });
+
+    // Respond with JWT token and meeting details
     res.json({
-      meetingId: meetingId, // Zoom-generated meeting ID
-      meetingPassword: meetingPassword, // Password set to "123456"
-      meetingLink: meetingLink // Zoom Web Client link
+      success: true,
+      token: jwtToken,
+      meetingId: meetingId,
+      meetingPassword: meetingPassword
     });
   } catch (error) {
     console.log(error);
 
     if (error.response && error.response.status === 401) {
-      // If token has expired, get a new one and retry the request
       await getOAuthToken();
       return app.post('/create-meeting', req, res);
     }
