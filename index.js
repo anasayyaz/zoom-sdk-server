@@ -69,11 +69,13 @@ app.post('/create-meeting', async (req, res) => {
 
     const meetingId = response.data.id;
     const meetingPassword = response.data.password;
+    const meetingLink = `https://zoom.us/wc/join/${meetingId}?pwd=${meetingPassword}`;
 
     // Payload to include in the JWT
     const payload = {
       meetingId: meetingId,
-      meetingPassword: meetingPassword
+      meetingPassword: meetingPassword,
+      meetingLink: meetingLink
     };
 
     // Generate JWT token
@@ -82,9 +84,11 @@ app.post('/create-meeting', async (req, res) => {
     // Respond with JWT token and meeting details
     res.json({
       success: true,
+      appKey:process.env.ZOOM_CLIENT_ID,
       token: jwtToken,
       meetingId: meetingId,
-      meetingPassword: meetingPassword
+      meetingPassword: meetingPassword,
+      meetingLink: meetingLink
     });
   } catch (error) {
     console.log(error);
